@@ -303,6 +303,8 @@ public final class InternalThreadLocalMap extends UnpaddedInternalThreadLocalMap
         Object[] oldArray = indexedVariables;
         final int oldCapacity = oldArray.length;
         int newCapacity = index;
+        //如果index不是2的n次方，则是比index大的最近的2的n次方
+        //否则是2倍
         newCapacity |= newCapacity >>>  1;
         newCapacity |= newCapacity >>>  2;
         newCapacity |= newCapacity >>>  4;

@@ -58,6 +58,7 @@ public abstract class AbstractByteBuf extends ByteBuf {
 
     int readerIndex;
     int writerIndex;
+    //备份
     private int markedReaderIndex;
     private int markedWriterIndex;
     private int maxCapacity;

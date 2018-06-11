@@ -17,10 +17,13 @@
 package io.netty.buffer;
 
 final class PoolSubpage<T> implements PoolSubpageMetric {
-
+    //关联的poolChunk
     final PoolChunk<T> chunk;
+    //poolChunk 的 page对应的 memoryMapId
     private final int memoryMapIdx;
+    //该PoolSubpage在poolChunk上的偏移量
     private final int runOffset;
+    //poolChunk 的page的单个大小
     private final int pageSize;
     private final long[] bitmap;
 
@@ -52,6 +55,8 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
         this.memoryMapIdx = memoryMapIdx;
         this.runOffset = runOffset;
         this.pageSize = pageSize;
+        //因为netty每次分配内存最少是16字节，而long的长度为64位，所以每个long的每一位都可以对应一个
+        //所以最多需要8个long
         bitmap = new long[pageSize >>> 10]; // pageSize / 16 / 64
         init(head, elemSize);
     }
@@ -60,9 +65,12 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
         doNotDestroy = true;
         this.elemSize = elemSize;
         if (elemSize != 0) {
+            //elemSize最小为16,maxNumElems最多为512
             maxNumElems = numAvail = pageSize / elemSize;
             nextAvail = 0;
+            //bitmapLength最大为8
             bitmapLength = maxNumElems >>> 6;
+            //大于0小于64bitmapLength需要加一,比如，当maxNumElems=500时，bitmapLength=7，但是此时8才符合
             if ((maxNumElems & 63) != 0) {
                 bitmapLength ++;
             }
@@ -195,6 +203,7 @@ final class PoolSubpage<T> implements PoolSubpageMetric {
     }
 
     private long toHandle(int bitmapIdx) {
+        //62中高32为bitmapIdx,低10位为memoryMapIdx
         return 0x4000000000000000L | (long) bitmapIdx << 32 | memoryMapIdx;
     }
 

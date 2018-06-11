@@ -43,7 +43,7 @@ import java.util.Set;
  * @see ThreadLocal
  */
 public class FastThreadLocal<V> {
-
+    //需要清理的ThreadLocalMap数组中对应的下标，所有FastThreadLocal都一样
     private static final int variablesToRemoveIndex = InternalThreadLocalMap.nextVariableIndex();
 
     /**
@@ -97,6 +97,7 @@ public class FastThreadLocal<V> {
 
     @SuppressWarnings("unchecked")
     private static void addToVariablesToRemove(InternalThreadLocalMap threadLocalMap, FastThreadLocal<?> variable) {
+        //所有的FastThreadLocal的variablesToRemoveIndex都是一样的
         Object v = threadLocalMap.indexedVariable(variablesToRemoveIndex);
         Set<FastThreadLocal<?>> variablesToRemove;
         if (v == InternalThreadLocalMap.UNSET || v == null) {
@@ -105,7 +106,7 @@ public class FastThreadLocal<V> {
         } else {
             variablesToRemove = (Set<FastThreadLocal<?>>) v;
         }
-
+        //同一个FastThreadLocalThread的需要清理的FastThreadLocal都放在这
         variablesToRemove.add(variable);
     }
 
@@ -128,7 +129,9 @@ public class FastThreadLocal<V> {
     private final int cleanerFlagIndex;
 
     public FastThreadLocal() {
+        //当前FastThreadLocal的唯一标识，对应的InternalThreadLocalMap的数组下标
         index = InternalThreadLocalMap.nextVariableIndex();
+        //清理标识
         cleanerFlagIndex = InternalThreadLocalMap.nextVariableIndex();
     }
 
@@ -150,12 +153,14 @@ public class FastThreadLocal<V> {
 
     private void registerCleaner(final InternalThreadLocalMap threadLocalMap) {
         Thread current = Thread.currentThread();
+        //清理或者已经注册清理
         if (FastThreadLocalThread.willCleanupFastThreadLocals(current) ||
             threadLocalMap.indexedVariable(cleanerFlagIndex) != InternalThreadLocalMap.UNSET) {
             return;
         }
         // removeIndexedVariable(cleanerFlagIndex) isn't necessary because the finally cleanup is tied to the lifetime
         // of the thread, and this Object will be discarded if the associated thread is GCed.
+        //在cleanerFlagIndex索引处设置值，表示注册清理
         threadLocalMap.setIndexedVariable(cleanerFlagIndex, Boolean.TRUE);
 
         // We will need to ensure we will trigger remove(InternalThreadLocalMap) so everything will be released

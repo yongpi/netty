@@ -42,7 +42,7 @@ final class PoolChunkList<T> {
         if (head == null) {
             return false;
         }
-
+        //遍历
         for (PoolChunk<T> cur = head;;) {
             long handle = cur.allocate(normCapacity);
             if (handle < 0) {
@@ -86,6 +86,7 @@ final class PoolChunkList<T> {
             chunk.prev = null;
             chunk.next = null;
         } else {
+            //head  ===>  chunk<->head
             chunk.prev = null;
             chunk.next = head;
             head.prev = chunk;

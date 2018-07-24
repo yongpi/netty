@@ -33,13 +33,14 @@ public class PooledByteBufAllocator extends AbstractByteBufAllocator {
 
     private static final int DEFAULT_PAGE_SIZE;
     private static final int DEFAULT_MAX_ORDER; // 8192 << 11 = 16 MiB per chunk
-    private static final int DEFAULT_TINY_CACHE_SIZE;
-    private static final int DEFAULT_SMALL_CACHE_SIZE;
-    private static final int DEFAULT_NORMAL_CACHE_SIZE;
+    private static final int DEFAULT_TINY_CACHE_SIZE;//512
+    private static final int DEFAULT_SMALL_CACHE_SIZE;//256
+    private static final int DEFAULT_NORMAL_CACHE_SIZE;//64
     private static final int DEFAULT_MAX_CACHED_BUFFER_CAPACITY;
     private static final int DEFAULT_CACHE_TRIM_INTERVAL;
 
     private static final int MIN_PAGE_SIZE = 4096;
+    //最大1G
     private static final int MAX_CHUNK_SIZE = (int) (((long) Integer.MAX_VALUE + 1) / 2);
 
     static {

@@ -123,6 +123,7 @@ final class PoolChunk<T> {
 
     private int freeBytes;
 
+    //对应的PoolChunkList
     PoolChunkList<T> parent;
     PoolChunk<T> prev;
     PoolChunk<T> next;
@@ -133,17 +134,25 @@ final class PoolChunk<T> {
     PoolChunk(PoolArena<T> arena, T memory, int pageSize, int maxOrder, int pageShifts, int chunkSize) {
         unpooled = false;
         this.arena = arena;
+        //byte[chunkSize]
         this.memory = memory;
+        //每个page的大小，8192
         this.pageSize = pageSize;
+        //page大小的2的次方, 13
+        // 2^13 = 8192
         this.pageShifts = pageShifts;
+        //page最大层级，默认11
         this.maxOrder = maxOrder;
+        //chunk 大小，默认8192 << 11 = 8192*2048 = 16MB
         this.chunkSize = chunkSize;
         unusable = (byte) (maxOrder + 1);
+        // 24 = 11 + 13
         log2ChunkSize = log2(chunkSize);
         subpageOverflowMask = ~(pageSize - 1);
         freeBytes = chunkSize;
 
         assert maxOrder < 30 : "maxOrder should be < 30, but is: " + maxOrder;
+        //subpage数组大小 2048
         maxSubpageAllocs = 1 << maxOrder;
 
         // Generate the memory map.
@@ -159,7 +168,8 @@ final class PoolChunk<T> {
                 memoryMapIndex ++;
             }
         }
-
+        //memoryMap and depthMap like this  {0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3...}
+        //第十一层的每个page对应一个subPage
         subpages = newSubpageArray(maxSubpageAllocs);
     }
 
@@ -221,6 +231,7 @@ final class PoolChunk<T> {
             byte val1 = value(id);
             byte val2 = value(id ^ 1);
             byte val = val1 < val2 ? val1 : val2;
+            //取左右子节点的最小值，如果都为unusable,则父节点unusable,沿着二叉树向上传播
             setValue(parentId, val);
             id = parentId;
         }
@@ -266,9 +277,11 @@ final class PoolChunk<T> {
         if (val > d) { // unusable
             return -1;
         }
+        //父节点可用，或者2的id次方小于2的d次方
         while (val < d || (id & initial) == 0) { // id & initial == 1 << d for all ids at depth d, for < d it is 0
             id <<= 1;
             val = value(id);
+            //只遍历两次：如果父节点不可用，就不会遍历父节点。而每个父节点只有两个子节点
             if (val > d) {
                 id ^= 1;
                 val = value(id);
@@ -289,6 +302,7 @@ final class PoolChunk<T> {
      * @return index in memoryMap
      */
     private long allocateRun(int normCapacity) {
+        //计算在第几层
         int d = maxOrder - (log2(normCapacity) - pageShifts);
         int id = allocateNode(d);
         if (id < 0) {
@@ -314,9 +328,9 @@ final class PoolChunk<T> {
 
         final PoolSubpage<T>[] subpages = this.subpages;
         final int pageSize = this.pageSize;
-
+        //减少可用字节
         freeBytes -= pageSize;
-
+        //获取subpage[]下标
         int subpageIdx = subpageIdx(id);
         PoolSubpage<T> subpage = subpages[subpageIdx];
         if (subpage == null) {
@@ -353,7 +367,9 @@ final class PoolChunk<T> {
     }
 
     void initBuf(PooledByteBuf<T> buf, long handle, int reqCapacity) {
+        //后32位
         int memoryMapIdx = (int) handle;
+        //前32位
         int bitmapIdx = (int) (handle >>> Integer.SIZE);
         if (bitmapIdx == 0) {
             byte val = value(memoryMapIdx);

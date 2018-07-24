@@ -62,13 +62,25 @@ final class PoolThreadCache {
     // TODO: Test if adding padding helps under contention
     //private long pad0, pad1, pad2, pad3, pad4, pad5, pad6, pad7;
 
+    /**
+     *
+     * @param heapArena
+     * @param directArena
+     * @param tinyCacheSize 512
+     * @param smallCacheSize 256
+     * @param normalCacheSize 64
+     * @param maxCachedBufferCapacity 32*1024
+     * @param freeSweepAllocationThreshold 8192
+     */
     PoolThreadCache(PoolArena<byte[]> heapArena, PoolArena<ByteBuffer> directArena,
                     int tinyCacheSize, int smallCacheSize, int normalCacheSize,
                     int maxCachedBufferCapacity, int freeSweepAllocationThreshold) {
+        //32*1024
         if (maxCachedBufferCapacity < 0) {
             throw new IllegalArgumentException("maxCachedBufferCapacity: "
                     + maxCachedBufferCapacity + " (expected: >= 0)");
         }
+        //8192
         if (freeSweepAllocationThreshold < 1) {
             throw new IllegalArgumentException("freeSweepAllocationThreshold: "
                     + maxCachedBufferCapacity + " (expected: > 0)");
@@ -111,6 +123,13 @@ final class PoolThreadCache {
         ThreadDeathWatcher.watch(thread, freeTask);
     }
 
+    /**
+     *
+     * @param cacheSize 每个cache里poolChunk的数量
+     * @param numCaches cache的数量
+     * @param <T>
+     * @return
+     */
     private static <T> SubPageMemoryRegionCache<T>[] createSubPageCaches(int cacheSize, int numCaches) {
         if (cacheSize > 0) {
             @SuppressWarnings("unchecked")
@@ -125,10 +144,19 @@ final class PoolThreadCache {
         }
     }
 
+    /**
+     *
+     * @param cacheSize 每个cache中的poolchunk的数量 64
+     * @param maxCachedBufferCapacity
+     * @param area
+     * @param <T>
+     * @return
+     */
     private static <T> NormalMemoryRegionCache<T>[] createNormalCaches(
             int cacheSize, int maxCachedBufferCapacity, PoolArena<T> area) {
         if (cacheSize > 0) {
             int max = Math.min(area.chunkSize, maxCachedBufferCapacity);
+            //默认2048
             int arraySize = Math.max(1, max / area.pageSize);
 
             @SuppressWarnings("unchecked")
@@ -359,12 +387,14 @@ final class PoolThreadCache {
             if (res <= 2) {
                 return 2;
             }
+            //2^n 返回 2^n
             res--;
-            res |= res >> 1;
-            res |= res >> 2;
-            res |= res >> 4;
-            res |= res >> 8;
-            res |= res >> 16;
+            // 1
+            res |= res >> 1;//11
+            res |= res >> 2;//1111
+            res |= res >> 4;//11111111
+            res |= res >> 8;//1111111111111111
+            res |= res >> 16;//11111111111111111111111111111111
             res++;
             return res;
         }

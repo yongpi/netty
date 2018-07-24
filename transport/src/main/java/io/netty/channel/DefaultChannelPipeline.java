@@ -56,7 +56,7 @@ final class DefaultChannelPipeline implements ChannelPipeline {
             nameCaches[i] = new WeakHashMap<Class<?>, String>();
         }
     }
-
+    //和channel是一对一的关系
     final AbstractChannel channel;
 
     final AbstractChannelHandlerContext head;

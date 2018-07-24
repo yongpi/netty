@@ -41,6 +41,7 @@ abstract class PooledByteBuf<T> extends AbstractReferenceCountedByteBuf {
         this.recyclerHandle = (Handle<PooledByteBuf<T>>) recyclerHandle;
     }
 
+    //关联PoolChunk、handle、offset、length、maxlength
     void init(PoolChunk<T> chunk, long handle, int offset, int length, int maxLength) {
         assert handle >= 0;
         assert chunk != null;

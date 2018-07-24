@@ -263,7 +263,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
      * Wrapped {@link EventLoop} and {@link ChannelHandlerInvoker} to support {@link Channel#deregister()}.
      */
     @SuppressWarnings("UnusedDeclaration")
-    private volatile PausableChannelEventExecutor wrappedEventLoop;
+    private volatile PausableChannelEventExecutor  wrappedEventLoop;
 
     AbstractChannelHandlerContext(
             DefaultChannelPipeline pipeline, ChannelHandlerInvoker invoker, String name, int skipFlags) {
@@ -349,6 +349,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     @Override
     public ChannelHandlerContext fireChannelUnregistered() {
         AbstractChannelHandlerContext next = findContextInbound();
+        //调用下一个ChannelHandlerContext
         next.invoker().invokeChannelUnregistered(next);
         return this;
     }

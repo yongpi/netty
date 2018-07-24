@@ -53,17 +53,20 @@ abstract class PoolArena<T> {
         this.pageShifts = pageShifts;
         this.chunkSize = chunkSize;
         subpageOverflowMask = ~(pageSize - 1);
+        //numTinySubpagePools 默认32, 16*32 = 512，阶梯分布，每个元素都递增代表16的一个倍数
         tinySubpagePools = newSubpagePoolArray(numTinySubpagePools);
         for (int i = 0; i < tinySubpagePools.length; i ++) {
+            //初始化链表的Head
             tinySubpagePools[i] = newSubpagePoolHead(pageSize);
         }
-
+        //默认为4,2^n 阶梯分布，每个元素代表512的2^n次方的一个n,n递增
         numSmallSubpagePools = pageShifts - 9;
         smallSubpagePools = newSubpagePoolArray(numSmallSubpagePools);
         for (int i = 0; i < smallSubpagePools.length; i ++) {
             smallSubpagePools[i] = newSubpagePoolHead(pageSize);
         }
 
+        // qInit<->q000<->q025<->q050<->q075<->q100
         q100 = new PoolChunkList<T>(this, null, 100, Integer.MAX_VALUE);
         q075 = new PoolChunkList<T>(this, q100, 75, 100);
         q050 = new PoolChunkList<T>(this, q075, 50, 100);
@@ -143,12 +146,13 @@ abstract class PoolArena<T> {
                 tableIdx = smallIdx(normCapacity);
                 table = smallSubpagePools;
             }
-
+            //加锁。可能多个thread竞态访问
             synchronized (this) {
                 final PoolSubpage<T> head = table[tableIdx];
                 final PoolSubpage<T> s = head.next;
                 if (s != head) {
                     assert s.doNotDestroy && s.elemSize == normCapacity;
+                    //分配，和removeFromPool配合保证不存在溢出
                     long handle = s.allocate();
                     assert handle >= 0;
                     s.chunk.initBufWithSubpage(buf, handle, reqCapacity);
@@ -168,13 +172,15 @@ abstract class PoolArena<T> {
         allocateNormal(buf, reqCapacity, normCapacity);
     }
 
+    //加锁，分配内存
     private synchronized void allocateNormal(PooledByteBuf<T> buf, int reqCapacity, int normCapacity) {
+        //先从PoolChunkList中找PoolChunk分配
         if (q050.allocate(buf, reqCapacity, normCapacity) || q025.allocate(buf, reqCapacity, normCapacity) ||
             q000.allocate(buf, reqCapacity, normCapacity) || qInit.allocate(buf, reqCapacity, normCapacity) ||
             q075.allocate(buf, reqCapacity, normCapacity) || q100.allocate(buf, reqCapacity, normCapacity)) {
             return;
         }
-
+        //找不到可以分配的poolChunk则new
         // Add a new chunk.
         PoolChunk<T> c = newChunk(pageSize, maxOrder, pageShifts, chunkSize);
         long handle = c.allocate(normCapacity);
@@ -187,10 +193,12 @@ abstract class PoolArena<T> {
         buf.initUnpooled(newUnpooledChunk(reqCapacity), reqCapacity);
     }
 
+    //加入池或者释放
     void free(PoolChunk<T> chunk, long handle, int normCapacity, boolean sameThreads) {
         if (chunk.unpooled) {
             destroyChunk(chunk);
         } else {
+            //当前线程是创建的线程
             if (sameThreads) {
                 PoolThreadCache cache = parent.threadCache.get();
                 if (cache.add(this, chunk, handle, normCapacity)) {
@@ -209,11 +217,13 @@ abstract class PoolArena<T> {
         int tableIdx;
         PoolSubpage<T>[] table;
         if (isTiny(elemSize)) { // < 512
+            //相同的elemSize对应同一个tableIdx,elemSize为16的倍数
             tableIdx = elemSize >>> 4;
             table = tinySubpagePools;
         } else {
             tableIdx = 0;
             elemSize >>>= 10;
+            //smallSubpagePools 2^10对应一个index,2^11对应index+1
             while (elemSize != 0) {
                 elemSize >>>= 1;
                 tableIdx ++;
@@ -251,11 +261,11 @@ abstract class PoolArena<T> {
             return normalizedCapacity;
         }
 
-        // Quantum-spaced
+        // Quantum-spaced 小于512并且是16的倍数,不加倍
         if ((reqCapacity & 15) == 0) {
             return reqCapacity;
         }
-
+        //小于十六则为16
         return (reqCapacity & ~15) + 16;
     }
 

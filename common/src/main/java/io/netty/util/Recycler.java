@@ -111,8 +111,15 @@ public abstract class Recycler<T> {
     }
 
     static final class DefaultHandle<T> implements Handle<T> {
+
+        /**
+         * 被放进队列时，被赋值为队列的唯一标志值，被放进stack时，和recycleId一起被赋值为{@link #OWN_THREAD_ID}
+         */
         private int lastRecycledId;
+        //只有在放进stack中,recycleId才被赋予lastRecycledId的值
         private int recycleId;
+        //是否已经被重用，只有当被放进stack中，才为true
+        boolean hasBeenRecycled;
 
         private Stack<?> stack;
         private Object value;

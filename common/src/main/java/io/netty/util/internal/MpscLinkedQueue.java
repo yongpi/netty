@@ -104,6 +104,10 @@ final class MpscLinkedQueue<E> extends MpscLinkedQueueTailRef<E> implements Queu
             // we can avoid reading the head and just spin on next until it shows up
             //
             // See https://github.com/akka/akka/pull/15596
+            /**
+             * new的时候，{@link headRef} == {@link tailRef}，当{@link #offer(Object)}时CAS {@link tailRef},
+             * CAS之后oldTail.setNext()使用的是lazySet()，所以导致head.next()不被线程立即看到,所以需要循环
+             */
             do {
                 next = head.next();
             } while (next == null);
@@ -143,6 +147,7 @@ final class MpscLinkedQueue<E> extends MpscLinkedQueueTailRef<E> implements Queu
         // Similar to 'headRef.node = next', but slightly faster (storestore vs loadstore)
         // See: http://robsjava.blogspot.com/2013/06/a-faster-volatile.html
         // See: http://psy-lob-saw.blogspot.com/2012/12/atomiclazyset-is-performance-win-for.html
+        //因为单个消费者，所以不会出现问题
         lazySetHeadRef(next);
 
         // Break the linkage between the old head and the new head.
